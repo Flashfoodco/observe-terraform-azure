@@ -1,4 +1,14 @@
 terraform {
+  required_version = ">= 0.13"
+
+  cloud {
+    organization = "Flashfoodco"
+
+    workspaces {
+      tags = ["app:observe"]
+    }
+  }
+
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
