@@ -31,46 +31,25 @@ resource "azuread_service_principal" "observe_service_principal" {
 }
 
 resource "azurerm_key_vault" "key_vault" {
-  name                = local.keyvault_name
-  location            = var.location
-  resource_group_name = azurerm_resource_group.observe_resource_group.name
-  tenant_id           = data.azuread_client_config.current.tenant_id
+  name                      = local.keyvault_name
+  location                  = var.location
+  resource_group_name       = azurerm_resource_group.observe_resource_group.name
+  tenant_id                 = data.azuread_client_config.current.tenant_id
+  enable_rbac_authorization = true
 
   sku_name = "standard"
 }
 
-resource "azurerm_key_vault_access_policy" "user" {
-  key_vault_id = azurerm_key_vault.key_vault.id
-  tenant_id    = data.azuread_client_config.current.tenant_id
-  object_id    = data.azuread_client_config.current.object_id
-
-
-  secret_permissions = [
-    "Backup",
-    "Restore",
-    "Get",
-    "Set",
-    "List",
-    "Delete",
-    "Purge",
-  ]
+resource "azurerm_role_assignment" "app" {
+  principal_id         = lookup(azurerm_linux_function_app.observe_collect_function_app.identity[0], "principal_id")
+  role_definition_name = "Key Vault Secrets Officer"
+  scope                = azurerm_key_vault.key_vault.id
 }
 
-resource "azurerm_key_vault_access_policy" "app" {
-  key_vault_id = azurerm_key_vault.key_vault.id
-  tenant_id    = data.azuread_client_config.current.tenant_id
-  object_id    = lookup(azurerm_linux_function_app.observe_collect_function_app.identity[0], "principal_id")
-
-
-  secret_permissions = [
-    "Backup",
-    "Restore",
-    "Get",
-    "Set",
-    "List",
-    "Delete",
-    "Purge",
-  ]
+resource "azurerm_role_assignment" "user" {
+  principal_id         = data.azuread_client_config.current.object_id
+  role_definition_name = "Key Vault Secrets Officer"
+  scope                = azurerm_key_vault.key_vault.id
 }
 
 resource "azurerm_key_vault_secret" "observe_token" {
@@ -80,7 +59,7 @@ resource "azurerm_key_vault_secret" "observe_token" {
 
   # Required so the user running this can get the result of the call.
   depends_on = [
-    azurerm_key_vault_access_policy.user,
+    azurerm_role_assignment.user,
   ]
 }
 
@@ -91,7 +70,7 @@ resource "azurerm_key_vault_secret" "observe_password" {
 
   # Required so the user running this can get the result of the call.
   depends_on = [
-    azurerm_key_vault_access_policy.user,
+    azurerm_role_assignment.user,
   ]
 }
 
