@@ -178,6 +178,11 @@ resource "azurerm_linux_function_app" "observe_collect_function_app" {
       python_version = "3.9"
     }
   }
+
+  depends_on = [
+    azurerm_key_vault_secret.observe_password,
+    azurerm_key_vault_secret.observe_token,
+  ]
 }
 
 #### Event Hub Debug 
